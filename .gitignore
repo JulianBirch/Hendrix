@@ -1,0 +1,11 @@
+pom.xml
+*jar
+/lib/
+/classes/
+*.exe.stackdump
+.lein-failures
+.lein-deps-sum
+*~
+\#*#
+q.bat
+/resources/public/
