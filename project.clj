@@ -1,4 +1,8 @@
-(defproject hendrix "1.0.0-SNAPSHOT"
-  :description "FIXME: write description"
-  :dependencies [[org.clojure/clojure "1.2.1"]]
-  :repl-options [:init nil :caught clj-stacktrace.repl/pst+])
+(defproject hendrix "0.0.1-SNAPSHOT"
+  :description "An asset pipeline library for Clojure Ring."
+  :dependencies [
+                 [org.clojure/clojure "1.3.0"]
+                 [hiccup "0.3.7"]
+                 [slingshot "0.8.0"]
+                 [org.clojure/clojure-contrib "1.2.0"]
+                 [org.clojure/core.match "0.2.0-alpha6"]])
