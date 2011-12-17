@@ -3,15 +3,9 @@
         [clojure.core.match :only [match match-1]])
   (:import [java.io File]))
 
-(defprotocol IFile
-  (get-canonical-path [f])
-  (get-files [f]))
+(defmulti get-canonical-path class)
 
 (defrecord DirectoryMatch [path glob regex])
-
-(extend File IFile
-        {:get-canonical-path (fn [^File file] (.getCanonicalPath file))
-         :get-files file-seq})
 
 (defn get-current-directory [] (file "."))
 
@@ -69,9 +63,12 @@
      (file path)
      glob
      regex)
-    (file (str path "/" glob)) ; thankfully, java is forgiving enough
-                               ; that this works on windows
-    ))
+    (file (if (-> path empty? not)
+            (str path "/" glob)
+            glob))))
+        ; thankfully, java is forgiving enough that this works on
+        ; windows
+
 
 (defn project-files-match [glob]
   (let [{:keys [path glob]} (split-glob glob)]
@@ -97,8 +94,13 @@
 (defn get-matching-files [{:keys [path regex] :as exact}]
   (if path
     (let [to-relative (make-to-relative path)]
-      (->> (get-files path)
+      (->> (file-seq path)
            (map to-relative)
            dotoprintln
            (filter #(re-matches regex %))))
-    (get-files exact)))
+    (file-seq exact)))
+
+(defmethod get-canonical-path File [^File file] (.getCanonicalPath file))
+
+(defmethod get-canonical-path java.lang.String [f]
+  (-> f file get-canonical-path))

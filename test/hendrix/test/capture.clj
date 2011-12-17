@@ -54,5 +54,5 @@
     (identity 3)
     (identity 6)
     (add-two 7)
-    {:add-two (captures add-two)
-     :identity (captures identity)}))
+    {:ignore (captures add-two)
+     :passthrough (captures identity)}))

@@ -6,28 +6,33 @@
   (:import [java.io File]
            [java.lang String]))
 
-(defprotocol Source
-  (last-updated [source]))
-
-(defprotocol Finder
-  (resolve-items [finder]))
-
-(defprotocol Rule
-  (evaluate [rule]))
+(defmulti last-updated class)
+(defmulti resolve-items class)
+(defmulti evaluate class)
 
 (defrecord FileRule [last-evaluated
                      inputs all-inputs
                      output action])
 
+(defn to-source [f]
+  (if (string? f) (file f) f))
+
 (defn output-time [{:keys [last-evaluated]} output]
   (or (-> last-evaluated deref)
-      (-> output last-updated)
+      (-> output to-source last-updated)
       0))
 
+(defn nice-max [coll]
+  (if (second coll)
+    (apply max coll)
+    (first coll)))
+
 (defn input-time [inputs all-inputs]
-  (-> (or all-inputs inputs)
-      (map last-updated)
-      (reduce max)))
+  (->> (if (and all-inputs (-> all-inputs empty? not))
+         all-inputs
+         inputs)
+       (map last-updated)
+       nice-max))
 
 (defn execute-rule
   [{:keys [action inputs all-inputs output last-evaluated] :as rule}]
@@ -35,17 +40,15 @@
         all-inputs (resolve-items all-inputs)
         ot (output-time rule output)
         it (input-time inputs all-inputs)]
-    (if (> it ot)
+    (if (or (nil? ot) (> it ot))
       (action inputs output)
       (reset! last-evaluated it))))
 
 (defn to-finder [input]
-  (cond
-   (satisfies? Finder input) input
-   (string? input) (file/new-directory-match { :glob input})
+  (if (string? input)
+    (file/new-directory-match {:glob input})
+    input))
 
-   )
-  )
 (defn new-rule
   ([{:keys [inputs all-inputs output action]}]
      (new-rule inputs output action all-inputs))
@@ -54,44 +57,32 @@
   ([inputs output action all-inputs]
      (FileRule. (atom nil)
             (to-finder inputs)
+            (to-finder all-inputs)
             output
-            action
-            (to-finder all-inputs))))
+            action)))
 
 (defn execute [rules]
   (doseq [r rules] (execute-rule r)))
 
-(def processes (ref {}))
+(defmethod last-updated
+  File
+  [^File file]
+  (.lastModified file))
 
-(def sleep-time 100) ; Sleep time for processes in milliseconds.
+(defmethod resolve-items
+  File
+  [^File file]
+  (if (.exists file) [file] []))
 
-(defn execute-repeatedly [rules enabled]
-  (when @enabled
-    (execute rules)
-    (Thread/sleep sleep-time) ; I promise this is the very last time I
-                              ; rewrite circumspec's watch code 20111119
-    (recur rules enabled)))
+(defmethod resolve-items
+  hendrix.file.DirectoryMatch
+  [dm]
+  (file/get-matching-files dm))
 
-(defn start [rules]
-  (let [enabled (atom true)]
-    (dosync (when-not (get processes rules)
-              (alter processes assoc rules enabled)
-              (future execute-repeatedly rules enabled)))))
-
-(defn finish [rules]
-  (let [enabled (get processes rules)]
-    (reset! enabled false)
-    (dosync (alter processes dissoc rules))))
-
-(extend File
-  Source {:last-updated (fn [file] (.lastModified file))}
-  Finder {:resolve-items (fn [file] (if (.exists file) [file] []))})
-
-(extend hendrix.file.DirectoryMatch
-  Finder {:resolve-items file/get-matching-files})
-
-(extend nil
-  Finder {:resolve-items (fn [file] [])})
+(defmethod resolve-items
+  nil
+  [file]
+  [])
 
 ; DEBUG ONLY
 
