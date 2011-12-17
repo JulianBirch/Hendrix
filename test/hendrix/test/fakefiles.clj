@@ -35,6 +35,9 @@
        (map :last-updated)
        first))
 
+(defmethod get-canonical-path FakeFile
+  [f] (:name f))
+
 (defmethod get-canonical-path clojure.lang.PersistentHashMap
   [f] (:name f))
 
@@ -56,13 +59,12 @@
 (defn with-fake-file-system [files action]
   (with-redefs
     [clojure.java.io/file (partial fake-file-function files)
-     file-seq (partial fake-file-seq files)
-     get-canonical-path :name]
+     file-seq (partial fake-file-seq files)]
     (action)))
 
-(defmacro with-ffs [files binding body]
+(defmacro with-ffs [files binding & body]
   `(with-captures ~binding
-     (with-fake-file-system ~files (fn [] ~body))))
+     (with-fake-file-system ~files (fn [] ~@body))))
 
 (deftest test-fake-files
   (with-ffs fake-files []
@@ -71,4 +73,6 @@
             :fake-files
             empty?
             not)
-        "Fake file should not have empty fake file list.")))
+        "Fake file should not have empty fake file list.")
+    (is (= "x/y" (get-canonical-path "x/y"))
+        "Get canonical path on string should return itself.")))

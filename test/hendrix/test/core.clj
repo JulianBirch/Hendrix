@@ -14,13 +14,11 @@
                     lessc
                     "assets/temp/*.less")]
       (is (-> inputs resolve-items first) "Inputs should have resolved")
-      (comment (do  (println "INPUTS")
-                     (println inputs)
-                     (println (class inputs))
-                     (println (= hendrix.test.fakefiles.FakeFile (class inputs)))))
-      (comment (is (instance? hendrix.test.fakefiles.FakeFile inputs)
-                    "inputs should have resolved to a FakeFile."))
       (is (instance? hendrix.file.DirectoryMatch all-inputs)
           "all-inputs should have resolved to a directory match.")
       (execute [b])
-      (println (captures sh)))))
+      (let [sh-args (-> sh captures first)]
+        (is sh-args "Command should have been sent out.")
+        (is (= ["lessc" "assets/temp/primary.less" "resources/public/site.css"]
+               (first sh-args))
+            "Incorrect command was sent out.")))))
