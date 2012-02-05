@@ -3,8 +3,7 @@
    [clojure.java.shell :only [sh]]
    [hendrix.file :only [get-canonical-path]]))
 
-(defn tap [f result]
-  (doto result f))
+(defn tap [f result] (doto result f))
 
 (defn log-output [text] (println text))
 

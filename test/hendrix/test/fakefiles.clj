@@ -16,7 +16,7 @@
   (starts-with (to-name short) (to-name long)))
 
 (def primary {:name "assets/temp/primary.less" :last-updated 2})
-(def implicit {:name "assets/temp/implict.less" :last-updated 2})
+(def implicit {:name "assets/temp/implict.less" :last-updated 3})
 
 (def fake-files [primary implicit
                  {:name "assets/temp/ignore.css" :last-updated 10}

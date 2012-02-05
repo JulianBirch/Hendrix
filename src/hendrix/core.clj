@@ -20,7 +20,7 @@
 (defn output-time [{:keys [last-evaluated]} output]
   (or (-> last-evaluated deref)
       (-> output to-source last-updated)
-      0))
+      nil))
 
 (defn nice-max [coll]
   (if (second coll)
@@ -39,8 +39,10 @@
   (let [inputs (resolve-items inputs)
         all-inputs (resolve-items all-inputs)
         ot (output-time rule output)
-        it (input-time inputs all-inputs)]
-    (if (or (nil? ot) (> it ot))
+        it (input-time inputs all-inputs)
+        _ (println (str "IT" it "OT" ot))
+        ]
+    (when (or (nil? ot) (< it ot))
       (action inputs output)
       (reset! last-evaluated it))))
 
