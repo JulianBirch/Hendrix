@@ -20,7 +20,7 @@
       (let [sh-args (-> sh captures first)]
         (is sh-args "Command should have been sent out.")
         (is (= ["lessc" "assets/temp/primary.less" "resources/public/site.css"]
-               (first sh-args))
+               sh-args)
             "Incorrect command was sent out."))
       (execute [b])
       (is (= 1 (-> sh captures count))

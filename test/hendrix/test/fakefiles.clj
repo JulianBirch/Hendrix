@@ -59,7 +59,8 @@
 (defn with-fake-file-system [files action]
   (with-redefs
     [clojure.java.io/file (partial fake-file-function files)
-     file-seq (partial fake-file-seq files)]
+     file-seq (partial fake-file-seq files)
+     is-windows (fn [] false)]
     (action)))
 
 (defmacro with-ffs [files binding & body]

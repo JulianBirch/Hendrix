@@ -1,7 +1,8 @@
 (ns hendrix.file
   (:use [clojure.java.io]
         [clojure.core.match :only [match match-1]])
-  (:import [java.io File]))
+  (:import [java.io File]
+           [java.util.regex Pattern]))
 
 (defmulti get-canonical-path class)
 
@@ -104,3 +105,29 @@
 
 (defmethod get-canonical-path java.lang.String [f]
   (-> f file get-canonical-path))
+
+(defn file-exists [^String path ^String file]
+  (.exists (File. path file)))
+
+(defn is-windows []
+  (= ";" File/pathSeparator))
+
+(defn which
+  ([command] (which command
+                    (System/getenv "path")
+                    File/pathSeparator ))
+  ([command path separator]
+     (let [items (.split path (Pattern/quote separator))]
+       (println separator)
+       (println items)
+       (->> items
+            (filter #(file-exists % command))
+            first))))
+
+(defn correct-file-name [command]
+  (if (is-windows)
+    (->> [".bat" ".exe" ""]
+         (map #(str command %))
+         (filter which)
+         first)
+    command))

@@ -18,7 +18,7 @@
   (invoke [this a b c] (capture-invoke this [a b c]))
   (invoke [this a b c d] (capture-invoke this [a b c d]))
   (applyTo [this args]
-    (clojure.lang.AFn/applyToHelper this args)))
+      (capture-invoke this args)))
 
 (defn new-capture [f]
   (new capture-t f (atom [])))
