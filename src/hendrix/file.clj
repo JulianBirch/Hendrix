@@ -10,12 +10,19 @@
 
 (defn get-current-directory [] (file "."))
 
+(defn get-file-name [^File file] (.getName file))
+
+(defn delete-file-name [^File file] (.delete file))
+
+(defn file? [f] (.isFile f))
+
 (defn to-regex-component [char]
   (case char
-    \* "[^\\/]+"
+    \* "[^/\\\\\\\\]+"
     \? "."
     \. "[.]"
-    (\\ \/) "[\\/]"
+    \\ "[/\\\\\\\\]"
+    \/ "[/\\\\\\\\]"
     (str char)))
 
 (defn to-regex-components [glob]
@@ -33,11 +40,11 @@
 (defn create-temp-directory [prefix]
   (let [tmpDir (System/getProperty "java.io.tmpdir")
         prefix (str prefix "-" (System/currentTimeMillis) "-")
-        to-file (fn [n] (file tmpDir (str prefix n)))
-        result (-> (range 10)
-                 (map to-file)
-                 (filter #(.mkdir %))
-                 first)]
+        to-file (fn to-file-fn [n] (file tmpDir (str prefix n)))
+        result (->> (range 10)
+                    (map to-file)
+                    (filter #(.mkdir %))
+                    first)]
     result))
 
 (defn split-glob-internal [glob]
@@ -57,19 +64,21 @@
 (defn is-wildcarded [glob]
   (some #{\*} glob))
 
-(defn new-directory-match [{:keys [path glob regex] :or {path "" glob "*"}}]
+(defn new-directory-match [{:keys [path glob regex] :or {path "." glob "*"}}]
   (if-let [regex (or regex
-                  (if (is-wildcarded glob) (to-regex glob)))]
+                     (if (is-wildcarded glob) (to-regex glob)))]
     (DirectoryMatch.
      (file path)
      glob
      regex)
-    (file (if (-> path empty? not)
-            (str path "/" glob)
-            glob))))
+    (let [path (if (string? path) path (get-canonical-path path))]
+      (if (string? path)
+        (file (if
+                  (or (-> path empty?) (= path "."))
+                glob
+                (str path "/" glob)))))))
         ; thankfully, java is forgiving enough that this works on
         ; windows
-
 
 (defn project-files-match [glob]
   (let [{:keys [path glob]} (split-glob glob)]
@@ -80,13 +89,12 @@
                   :glob glob}))
 
 (defn make-to-relative [path]
-  (let [root-length (-> path get-canonical-path count)]
+  (let [root-length (-> path get-canonical-path count inc)]
     (fn to-relative [f]
-      (println f)
       (->> f
            get-canonical-path
            (drop root-length)
-           str))))
+           (apply str)))))
 
 (defn dotoprintln [f]
   (println f)
@@ -95,19 +103,19 @@
 (defn get-matching-files [{:keys [path regex] :as exact}]
   (if path
     (let [to-relative (make-to-relative path)]
-      (->> (file-seq path)
-           (map to-relative)
-           dotoprintln
-           (filter #(re-matches regex %))))
-    (file-seq exact)))
+      (->> (-> path file file-seq)
+           (filter file?)
+           (filter #(->> % to-relative (re-matches regex)))))
+    (->> exact file-seq (filter file?))))
 
 (defmethod get-canonical-path File [^File file] (.getCanonicalPath file))
 
 (defmethod get-canonical-path java.lang.String [f]
   (-> f file get-canonical-path))
 
-(defn file-exists [^String path ^String file]
-  (.exists (File. path file)))
+(defn file-exists
+  ([f] (-> f file .exists))
+  ([^String path ^String file] (.exists (File. path file))))
 
 (defn is-windows []
   (= ";" File/pathSeparator))
@@ -117,12 +125,9 @@
                     (System/getenv "path")
                     File/pathSeparator ))
   ([command path separator]
-     (let [items (.split path (Pattern/quote separator))]
-       (println separator)
-       (println items)
-       (->> items
-            (filter #(file-exists % command))
-            first))))
+     (->> (.split path (Pattern/quote separator))
+          (filter #(file-exists % command))
+          first)))
 
 (defn correct-file-name [command]
   (if (is-windows)
@@ -131,3 +136,22 @@
          (filter which)
          first)
     command))
+
+; Based on https://svn.apache.org/repos/asf/commons/proper/io/trunk/src/main/java/org/apache/commons/io/FileUtils.java
+#_(defn copy-file [from to]
+  (with-open [fis (-> from file FileInputStream.)
+              fos (-> to file FileOutputStream.)
+              i (.getChannel fis)
+              o (.getChannel fos)]
+    (let [buffer-size 65536
+          size (.size i)]
+      (loop [pos 0]
+        (let [count (min (- size pos) buffer-size)
+              pos (+ pos (.transformFrom o i pos count))]
+          (if (< pos size) (recur pos)))))))
+
+(defrecord MergeRule [inputs output]
+  clojure.lang.IFn
+  (invoke [this glob] (new-directory-match {:path output :glob glob}))
+  (applyTo [this args]
+    (clojure.lang.AFn/applyToHelper this args)))

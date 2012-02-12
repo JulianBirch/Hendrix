@@ -16,7 +16,11 @@
     (is (= "bootstrap.less" glob))))
 
 (deftest regex-generation
-  (is (= (to-regex-pattern "*.less") "[^\\/]+[.]less")))
+  (let [dotless-pattern (to-regex-pattern "x/*.less")
+        dotless (to-regex "x/*.less")]
+    (is (= dotless-pattern "x[/\\\\\\\\][^/\\\\\\\\]+[.]less"))
+    (is (re-matches dotless "x/bootstrap.less"))
+    (is (re-matches dotless "x\\bootstrap.less"))))
 
 (defn scan [glob]
   (with-fake-file-system

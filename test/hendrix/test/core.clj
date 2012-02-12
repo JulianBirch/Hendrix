@@ -2,7 +2,7 @@
   (:require [hendrix.file])
   (:use [hendrix core command]
         [hendrix.test fakefiles capture]
-        [clojure.test]
+        [clojure test pprint]
         [clojure.java.shell :only [sh]]))
 
 (deftest compile-bootstrap
@@ -13,13 +13,16 @@
                     "resources/public/site.css"
                     lessc
                     "assets/temp/*.less")]
+      (pprint b)
       (is (-> inputs resolve-items first) "Inputs should have resolved")
       (is (instance? hendrix.file.DirectoryMatch all-inputs)
           "all-inputs should have resolved to a directory match.")
       (execute [b])
       (let [sh-args (-> sh captures first)]
         (is sh-args "Command should have been sent out.")
-        (is (= ["lessc" "assets/temp/primary.less" "resources/public/site.css"]
+        (println "X")
+        (println sh-args)
+        (is (= ["lessc" "/assets/temp/primary.less" "/resources/public/site.css"]
                sh-args)
             "Incorrect command was sent out."))
       (execute [b])
