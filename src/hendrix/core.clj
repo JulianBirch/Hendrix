@@ -10,7 +10,7 @@
 (defmulti last-updated class)
 (defmulti resolve-items class)
 (defmulti evaluate-rule class)
-(println "HELLO")
+
 (defrecord FileRule [last-evaluated
                      inputs all-inputs
                      output action])
@@ -56,7 +56,7 @@
   (file/->MergeRule inputs
                     (-> "hendrix" file/create-temp-directory file)))
 
-(defn execute [rules]
+(defn execute [& rules]
   (doseq [r rules] (evaluate-rule r)))
 
 (defmethod resolve-items
@@ -92,8 +92,6 @@
 (defmethod evaluate-rule
   hendrix.file.MergeRule
   [{:keys [inputs output] :as rule} ]
-  (pprint "OUTPUT")
-  (pprint (-> inputs first to-finder))
   (let [input-files (->> inputs
                          (map to-finder)
                          (mapcat resolve-items)
@@ -102,8 +100,7 @@
                          (apply hash-map))
         output-files (resolve-items output)
         copies (for [[file-name input-file] input-files
-                     :let [output-file (rule file-name)
-                           _ (pprint output-file)]
+                     :let [output-file (rule file-name)]
                      :when (or (-> output-file file/file-exists not)
                                (> (last-updated input-file) (last-updated output-file)))]
                  (copy input-file output-file))

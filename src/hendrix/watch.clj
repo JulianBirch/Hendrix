@@ -2,7 +2,7 @@
 
 (def processes (ref {}))
 
-(def sleep-time 100) ; Sleep time for processes in milliseconds.
+(def sleep-time 1000) ; Sleep time for processes in milliseconds.
 
 (defn execute-repeatedly [command enabled]
   (when @enabled
@@ -15,7 +15,7 @@
   (let [enabled (atom true)]
     (dosync (when-not (get processes command)
               (alter processes assoc command enabled)
-              (future execute-repeatedly command enabled)))))
+              (future (execute-repeatedly command enabled))))))
 
 (defn finish [command]
   (let [enabled (get processes command)]
